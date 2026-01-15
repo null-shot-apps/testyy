@@ -1,84 +1,221 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
-const slogans = [
-  "Turn chats into apps",
-  "Prompt. Ship. Repeat.",
-  "Build anything from a chat",
-  "Ideas → Apps, instantly",
-  "From zero to MVP in minutes",
-  "Your cofounder in the command line",
-  "Draft, iterate, deploy",
-  "Ship faster than you can type",
-  "Design in text, deliver in code",
-  "Dream it. Prompt it. Run it.",
-  "Chat-native app building",
-  "From prompt to product",
-  "One prompt, infinite apps",
-  "Stop scaffolding. Start shipping.",
-  "Prototype at the speed of thought",
-  "Make conversations executable"
-];
+const GRID_SIZE = 13;
+const CELL_SIZE = 40;
+const GAME_SPEED = 150;
 
-export default function Landing() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
+type Position = { x: number; y: number };
+type Vehicle = { x: number; speed: number; width: number };
 
+export default function FroggerGame() {
+  const [frogPos, setFrogPos] = useState<Position>({ x: 6, y: 12 });
+  const [gameOver, setGameOver] = useState(false);
+  const [won, setWon] = useState(false);
+  const [score, setScore] = useState(0);
+  const [vehicles, setVehicles] = useState<Vehicle[][]>([]);
+
+  // Initialize vehicles
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIsVisible(false);
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % slogans.length);
-        setIsVisible(true);
-      }, 400);
-    }, 2800);
-
-    return () => clearInterval(interval);
+    const initialVehicles: Vehicle[][] = [];
+    for (let row = 0; row < GRID_SIZE; row++) {
+      if (row >= 2 && row <= 10 && row !== 6) {
+        const numVehicles = Math.floor(Math.random() * 2) + 2;
+        const rowVehicles: Vehicle[] = [];
+        const speed = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 0.5 + 0.5);
+        for (let i = 0; i < numVehicles; i++) {
+          rowVehicles.push({
+            x: (i * GRID_SIZE) / numVehicles,
+            speed,
+            width: Math.random() > 0.5 ? 2 : 1,
+          });
+        }
+        initialVehicles[row] = rowVehicles;
+      } else {
+        initialVehicles[row] = [];
+      }
+    }
+    setVehicles(initialVehicles);
   }, []);
 
+  // Move vehicles
+  useEffect(() => {
+    if (gameOver || won) return;
+
+    const interval = setInterval(() => {
+      setVehicles((prev) =>
+        prev.map((row) =>
+          row.map((vehicle) => {
+            let newX = vehicle.x + vehicle.speed * 0.1;
+            if (newX > GRID_SIZE + 2) newX = -2;
+            if (newX < -2) newX = GRID_SIZE + 2;
+            return { ...vehicle, x: newX };
+          })
+        )
+      );
+    }, GAME_SPEED);
+
+    return () => clearInterval(interval);
+  }, [gameOver, won]);
+
+  // Check collisions
+  useEffect(() => {
+    if (gameOver || won) return;
+
+    const currentRow = vehicles[frogPos.y];
+    if (currentRow) {
+      for (const vehicle of currentRow) {
+        const vehicleLeft = vehicle.x;
+        const vehicleRight = vehicle.x + vehicle.width;
+        if (
+          frogPos.x >= Math.floor(vehicleLeft) &&
+          frogPos.x < Math.ceil(vehicleRight)
+        ) {
+          setGameOver(true);
+          return;
+        }
+      }
+    }
+
+    // Check win condition
+    if (frogPos.y === 0) {
+      setWon(true);
+      setScore((prev) => prev + 100);
+    }
+  }, [frogPos, vehicles, gameOver, won]);
+
+  // Handle keyboard input
+  const handleKeyPress = useCallback(
+    (e: KeyboardEvent) => {
+      if (gameOver || won) return;
+
+      let newPos = { ...frogPos };
+      switch (e.key) {
+        case 'ArrowUp':
+        case 'w':
+          if (frogPos.y > 0) newPos.y--;
+          break;
+        case 'ArrowDown':
+        case 's':
+          if (frogPos.y < GRID_SIZE - 1) newPos.y++;
+          break;
+        case 'ArrowLeft':
+        case 'a':
+          if (frogPos.x > 0) newPos.x--;
+          break;
+        case 'ArrowRight':
+        case 'd':
+          if (frogPos.x < GRID_SIZE - 1) newPos.x++;
+          break;
+        default:
+          return;
+      }
+      e.preventDefault();
+      setFrogPos(newPos);
+    },
+    [frogPos, gameOver, won]
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [handleKeyPress]);
+
+  const resetGame = () => {
+    setFrogPos({ x: 6, y: 12 });
+    setGameOver(false);
+    setWon(false);
+  };
+
+  const getRowColor = (y: number) => {
+    if (y === 0) return 'bg-green-600';
+    if (y === 12) return 'bg-green-800';
+    if (y === 6) return 'bg-yellow-600';
+    return 'bg-gray-700';
+  };
+
   return (
-    <div className="relative h-[100dvh] w-full overflow-hidden bg-black text-white">
-      {/* Enhanced animated aurora background layers */}
-      <div className="absolute inset-0 bg-aurora-layer-1" />
-      <div className="absolute inset-0 bg-aurora-layer-2" />
-      <div className="absolute inset-0 bg-aurora-layer-3" />
-      
-      {/* Floating particles overlay */}
-      <div className="absolute inset-0 bg-particles" />
-      
-      {/* Main content - centered */}
-      <main className="relative z-10 h-full flex flex-col items-center justify-center px-6">
-        <h1 className="text-center text-[clamp(28px,6vw,64px)] font-medium tracking-tight mb-4">
-          Turn Chats into Apps
-        </h1>
-        
-        {/* Rotating slogans */}
-        <div className="mt-4 h-8 md:h-10 overflow-hidden flex items-center justify-center">
-          <span
-            className={`inline-block text-center text-[clamp(18px,3vw,32px)] font-light transition-all duration-[400ms] ease-in-out ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
-            }`}
-          >
-            {slogans[currentIndex]}
-          </span>
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-black text-white flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="text-center mb-4">
+          <h1 className="text-4xl font-bold mb-2">FROGGER</h1>
+          <p className="text-xl">Score: {score}</p>
+          <p className="text-sm text-gray-400 mt-2">Use Arrow Keys or WASD to move</p>
         </div>
-      </main>
-      
-      {/* Start Prompting arrow pointing left - bottom left */}
-      <div className="absolute left-6 md:left-8 bottom-[5%] z-20 flex items-center gap-3 arrow-point-left">
-        <div className="flex items-center gap-2 text-white/80 font-medium text-sm md:text-base">
-          <svg 
-            className="w-5 h-5 md:w-6 md:h-6 animate-bounce-horizontal" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
+
+        <div
+          className="relative border-4 border-white"
+          style={{
+            width: GRID_SIZE * CELL_SIZE,
+            height: GRID_SIZE * CELL_SIZE,
+          }}
+        >
+          {/* Grid */}
+          {Array.from({ length: GRID_SIZE }).map((_, y) => (
+            <div key={y} className="flex">
+              {Array.from({ length: GRID_SIZE }).map((_, x) => (
+                <div
+                  key={`${x}-${y}`}
+                  className={`${getRowColor(y)} border border-gray-800`}
+                  style={{
+                    width: CELL_SIZE,
+                    height: CELL_SIZE,
+                  }}
+                />
+              ))}
+            </div>
+          ))}
+
+          {/* Vehicles */}
+          {vehicles.map((row, y) =>
+            row.map((vehicle, i) => (
+              <div
+                key={`${y}-${i}`}
+                className="absolute bg-red-600 rounded"
+                style={{
+                  left: vehicle.x * CELL_SIZE,
+                  top: y * CELL_SIZE,
+                  width: vehicle.width * CELL_SIZE,
+                  height: CELL_SIZE,
+                }}
+              />
+            ))
+          )}
+
+          {/* Frog */}
+          <div
+            className="absolute bg-green-400 rounded-full flex items-center justify-center text-2xl transition-all duration-100"
+            style={{
+              left: frogPos.x * CELL_SIZE,
+              top: frogPos.y * CELL_SIZE,
+              width: CELL_SIZE,
+              height: CELL_SIZE,
+            }}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          <span>Start prompting</span>
+            🐸
+          </div>
+
+          {/* Game Over Overlay */}
+          {(gameOver || won) && (
+            <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+              <div className="text-center">
+                <h2 className="text-4xl font-bold mb-4">
+                  {won ? '🎉 YOU WIN! 🎉' : '💀 GAME OVER 💀'}
+                </h2>
+                <p className="text-2xl mb-6">Score: {score}</p>
+                <button
+                  onClick={resetGame}
+                  className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-xl font-bold"
+                >
+                  Play Again
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
+
