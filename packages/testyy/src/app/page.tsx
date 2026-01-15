@@ -90,29 +90,36 @@ export default function FroggerGame() {
     (e: KeyboardEvent) => {
       if (gameOver || won) return;
 
-      let newPos = { ...frogPos };
       switch (e.key) {
         case 'ArrowUp':
         case 'w':
-          if (frogPos.y > 0) newPos.y--;
+          if (frogPos.y > 0) {
+            e.preventDefault();
+            setFrogPos({ x: frogPos.x, y: frogPos.y - 1 });
+          }
           break;
         case 'ArrowDown':
         case 's':
-          if (frogPos.y < GRID_SIZE - 1) newPos.y++;
+          if (frogPos.y < GRID_SIZE - 1) {
+            e.preventDefault();
+            setFrogPos({ x: frogPos.x, y: frogPos.y + 1 });
+          }
           break;
         case 'ArrowLeft':
         case 'a':
-          if (frogPos.x > 0) newPos.x--;
+          if (frogPos.x > 0) {
+            e.preventDefault();
+            setFrogPos({ x: frogPos.x - 1, y: frogPos.y });
+          }
           break;
         case 'ArrowRight':
         case 'd':
-          if (frogPos.x < GRID_SIZE - 1) newPos.x++;
+          if (frogPos.x < GRID_SIZE - 1) {
+            e.preventDefault();
+            setFrogPos({ x: frogPos.x + 1, y: frogPos.y });
+          }
           break;
-        default:
-          return;
       }
-      e.preventDefault();
-      setFrogPos(newPos);
     },
     [frogPos, gameOver, won]
   );
@@ -218,4 +225,6 @@ export default function FroggerGame() {
     </div>
   );
 }
+
+
 
